@@ -5,3 +5,4 @@ MIA/results/*
 config.yaml
 MIA/config.yaml
 *.ipynb
+testing.py
