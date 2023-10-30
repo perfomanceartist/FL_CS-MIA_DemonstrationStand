@@ -11,15 +11,22 @@ def unpickle(file):
     return dict
 
 def cifar10_to_df():
-    data_batch_1 = unpickle("..\\original_datasets\\cifar10\\data_batch_1")
-    x_train = data_batch_1['data']
-    y_train = data_batch_1['labels']
-    column_names = [f'pixel_{str(i+1)}' for i in range(x_train.shape[1])]
-    
-    df_images = pd.DataFrame(x_train, columns=column_names)
-    df_labels = pd.DataFrame(y_train, columns=["label"])
-    df = pd.concat([df_images, df_labels], axis=1)
-    df.to_csv("..\\original_datasets\\cifar10.csv")
+    batches_names = ["data_batch_1", "data_batch_2", "data_batch_3", "data_batch_4", "data_batch_5"]
+    full_df = None
+    for batch_name in batches_names:        
+        data_batch_1 = unpickle(f"..\\original_datasets\\cifar10\\{batch_name}")
+        x_train = data_batch_1['data']
+        y_train = data_batch_1['labels']
+        column_names = [f'pixel_{str(i+1)}' for i in range(x_train.shape[1])]
+        
+        df_images = pd.DataFrame(x_train, columns=column_names)
+        df_labels = pd.DataFrame(y_train, columns=["label"])
+        df = pd.concat([df_images, df_labels], axis=1)
+        if full_df is None:
+            full_df = df.copy()
+        else:
+            full_df = pd.concat([full_df, df], axis=0)
+    full_df.to_csv("..\\original_datasets\\cifar10.csv", index=False)
 
     #meta_file = '..\\original_datasets\\cifar10\\batches.meta'
     #meta_data = unpickle(meta_file)
