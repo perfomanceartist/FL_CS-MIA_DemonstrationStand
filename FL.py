@@ -37,7 +37,8 @@ class FL:
             self.models.append(LocalModel(self.datasets[0][0], params=params))
         self.shadow_model = LocalModel(self.shadow_dataset[0], params=params)
         
-        
+        print('SHADOW MODEL SUMMARY:')
+        print(self.shadow_model.model.summary())
     
     def parse_params(self, params:dict):
         try:

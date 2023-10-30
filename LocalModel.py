@@ -35,8 +35,8 @@ class LocalModel:
             self.hidden_layers = 2
         try:
             self.hidden_layer_neurons = params["local_model"]["structure"]["fcn_hidden_layer_neurons"]
-            if type(self.hidden_layers) != 'list':
-                self.hidden_layer_neurons = [150 for i in range(self.hidden_layers)]
+            if type(self.hidden_layer_neurons) == type(150):
+                self.hidden_layer_neurons = [self.hidden_layer_neurons for i in range(self.hidden_layers)]
             while len(self.hidden_layer_neurons) != self.hidden_layers:
                 self.hidden_layer_neurons.append(self.hidden_layer_neurons[:-1])
         except KeyError:
@@ -125,12 +125,10 @@ class LocalModel:
         if with_y:
             data_y = data_x[self.label_names].copy().to_numpy()
             data_x  = data_x.drop(self.label_names, axis=1).to_numpy()
+            # стандартизация входных данных
+            data_x = data_x / 255
         else:
             data_x = data_x.to_numpy()
-
-
-        # стандартизация входных данных
-        data_x = data_x / 255
 
         if self.structure == "conv":  
             data_x = data_x.reshape(data_x.shape[0],3,32,32).transpose(0,2,3,1)
@@ -582,8 +580,8 @@ if __name__ == '__main__':
     with open("config.yaml", "r") as yamlfile:
         config = yaml.load(yamlfile, Loader=yaml.FullLoader)
 
-    df = pd.read_csv('prepared_datasets\\train.csv').iloc[0:10]
-    df_test = pd.read_csv('prepared_datasets\\test.csv')
+    df = pd.read_csv('prepared_datasets\\train_purchase100.csv').iloc[0:10]
+    df_test = pd.read_csv('prepared_datasets\\test_purchase100.csv')
     t_m = LocalModel(df, params=config)
     t_m.learn(df)
     t_m.evaluate(df_test)
