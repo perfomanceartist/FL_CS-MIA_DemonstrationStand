@@ -162,7 +162,7 @@ class LocalModel:
                 layers_have_weights.append(True)
             elif param["type"] == "maxpooling2d":
                 layers.append(
-                tf.keras.layers.MaxPooling2D( tuple(param["kernel"]),  param["strides"])
+                tf.keras.layers.MaxPooling2D( tuple(param["kernel"]),  param["strides"], padding="same")
                 )
                 layers_have_weights.append(False)
         
