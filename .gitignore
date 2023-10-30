@@ -1,0 +1,7 @@
+original_datasets/*
+prepared_datasets/*
+sessions/*
+MIA/results/*
+config.yaml
+MIA/config.yaml
+*.ipynb

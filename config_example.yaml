@@ -1,0 +1,56 @@
+global:
+  model_count: 5
+  rounds: 50
+
+dataset:
+  labels: [label_0, label_1, label_2, label_3, label_4, label_5, label_6, label_7, label_8, label_9]
+
+
+local_model:
+  structure:
+    input_shape: [32, 32, 3] #  [ 32, 32, 3] or [ 784]
+    type: conv # conv or fcn
+    layers: # for convolutional networks
+      - layer:
+          type: conv2d
+          filters: 32
+          strides: [2,2] # 2 or [2,2]
+          padding: same
+          kernel: [3,3]
+      - layer:
+          type: maxpooling2d
+          kernel: [2,2]
+          strides: 2
+      - layer:
+          type: conv2d
+          filters: 64
+          strides: [2,2] # 2 or [2,2]
+          padding: same
+          kernel: [3,3]
+      - layer:
+          type: maxpooling2d
+          kernel: [2,2]
+          strides: 2      
+    fcn_hidden_layers: 1
+    fcn_hidden_layer_neurons: 150 #[1024, 512, 256, 128] 
+  loss: categorical_crossentropy
+  optimizer: adam
+  metrics: [categorical_accuracy]
+  batch_size: 128
+  validation_split: 0.05
+  epochs: 15
+  debug: True
+
+defence: none # none, dropout, pckd, data_spoof, noise
+dropout:
+  rate: 0.5
+pckd:
+  K: 4
+  teacher_epochs: 3
+noise:
+  scale: 0.1
+data_spoof:
+  corr_limit: 0.05
+  truth_limit: 0.5
+  set_student_layer_num: 0
+  set_student_prob: 0.0
