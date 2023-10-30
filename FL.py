@@ -7,25 +7,37 @@ import os
 from pathlib import Path
 from MIAConstructor import MIAConstructor
 from datetime import datetime
-
+import logging
 class FL:
-    def __init__(self, df_train, df_test, params=dict()) -> None:
-        #self.current_session = str(time.strftime("%Y-%m-%d %H-%M-%S", time.gmtime()))
-        self.current_session = str(datetime.now().strftime("%Y-%m-%d %H-%M-%S"))
-        Path("sessions").mkdir(parents=True, exist_ok=True)        
-        os.mkdir(f'sessions\\{self.current_session}')
-        with open(f'sessions\\{self.current_session}\\config.yaml', 'w') as yaml_file:
-            yaml.dump(params, yaml_file, default_flow_style=False)      
+    def __init__(self, df_train, df_test, params=dict()) -> None:       
+             
 
         self.target_model_num = 0
         self.target_model_states = []
         self.shadow_model_states = []
 
         self.params = params.copy()
-        self.parse_params(params) 
+
+        self.parse_params(params)
+        #self.current_session = str(time.strftime("%Y-%m-%d %H-%M-%S", time.gmtime()))
+        self.current_session = f'{self.short_name} ({ str(datetime.now().strftime("%Y-%m-%d %H-%M-%S")) })'
+        Path("sessions").mkdir(parents=True, exist_ok=True)        
+        os.mkdir(f'sessions\\{self.current_session}')
+        with open(f'sessions\\{self.current_session}\\config.yaml', 'w') as yaml_file:
+            yaml.dump(params, yaml_file, default_flow_style=False)
+
+        logging.basicConfig(filename=f'sessions\\{self.current_session}\\FL.log',
+                    format='%(asctime)s %(message)s',
+                    filemode='a')
+        self.logger = logging.getLogger()
+        self.logger.setLevel(logging.INFO) 
+
+
         self.datasets = []       
         self.df_train_split(df_train)
         self.df_test = df_test
+
+       
 
         os.mkdir(f'sessions\\{self.current_session}\\datasets')
         self.df_shadow.to_csv(f'sessions\\{self.current_session}\\datasets\\shadow.csv', index=False)
@@ -49,6 +61,16 @@ class FL:
             self.rounds = params["global"]["rounds"]
         except KeyError:
             self.rounds = 20
+        
+        try:
+            self.decription = params["global"]["description"]
+        except:
+            self.decription = "no description"
+        
+        try:
+            self.short_name = params["global"]["short_name"]
+        except:
+            self.short_name = "unnamed"
 
 
     def _splitDataframe(df, parts):
@@ -72,55 +94,78 @@ class FL:
     
 
        
-    def _save_weights(self):
-        os.mkdir(f'sessions\\{self.current_session}\\weights')
-        i = 1
-        for target_state in self.target_model_states:
-            with open(f'sessions\\{self.current_session}\\weights\\target_{i}.weights', 'wb') as f:
-                pickle.dump(target_state, f)
-            i += 1
+    def _save_round_weights(self, round):        
+        Path(f"sessions").mkdir(parents=True, exist_ok=True)
+        Path(f"sessions\\{self.current_session}").mkdir(parents=True, exist_ok=True)
+        Path(f"sessions\\{self.current_session}\\weights").mkdir(parents=True, exist_ok=True)     
 
-        i = 1
-        for shadow_state in self.shadow_model_states:
-            with open(f'sessions\\{self.current_session}\\weights\\shadow_{i}.weights', 'wb') as f:
-                pickle.dump(shadow_state, f)
-            i += 1
+        with open(f'sessions\\{self.current_session}\\weights\\target_{round+1}.weights', 'wb') as f:
+            target_state = self.target_model_states[round]
+            pickle.dump(target_state, f)
+        with open(f'sessions\\{self.current_session}\\weights\\shadow_{round+1}.weights', 'wb') as f:
+            shadow_state = self.shadow_model_states[round]
+            pickle.dump(shadow_state, f)
+        
+
+       
+    def _save_weights(self):
+        for i in range(self.rounds):
+            self._save_round_weights(i)
 
     def work(self):
-        metric_results = []
-        total_time_start = time.time()
-        for i in range(self.rounds):
-            print(f"ROUND # {i+1}")
-            total_seconds = self.round(i)
-            global_model = self.aggregate()
-            
-            print('GLOBAL MODEL EVALUATION:')
-            metric_result  = global_model.evaluate(self.df_test)
-            metric_results.append(metric_result)
-
-            for metric in range(len(global_model.metrics)):
-                print(f'Global model {global_model.metrics[metric]}: { round(metric_result[metric], 2)}')
-            print(f'Round ended in {total_seconds} seconds.')
-            print("-----------------------")
-        print('ALL METRICS:')
-        for i in range(len(metric_results)):
-            for j in range(len(metric_results[i])):
-                print(i+1, f'{global_model.metrics[j]}:{round(metric_results[i][j], 4)}')
+        try:
+            metric_results = []
+            total_time_start = datetime.now()
+            for i in range(self.rounds):
+                print(f"ROUND # {i+1}")
+                self.logger.info(f"ROUND # {i+1}")
+                total_seconds = self.round(i)
+                global_model = self.aggregate()
                 
-        print(f'TOTAL TIME: {time.time() - total_time_start} seconds.')
-        print('Saving session...')
-        self._save_weights()
+                print('GLOBAL MODEL EVALUATION:')
+                metric_result  = global_model.evaluate(self.df_test)
+                metric_results.append(metric_result)
+        
+                for metric in range(len(global_model.metrics)):
+                    print(f'Global model {global_model.metrics[metric]}: { round(metric_result[metric], 2)}')
+                    self.logger.info(f'Global model {global_model.metrics[metric]}: { round(metric_result[metric], 2)}')
+                print(f'Round ended in {total_seconds} seconds.')
+                print("-----------------------")
+
+                self.logger.info(f'Round ended in {total_seconds} seconds.')
+                self.logger.info("-----------------------")
+
+            print('ALL GLOBAL METRICS:')
+            self.logger.info("ALL GLOBAL METRICS:")
+            for i in range(len(metric_results)):
+                for j in range(len(metric_results[i])):
+                    m_s =f'{str(i+1)}: {global_model.metrics[j]}: {round(metric_results[i][j], 4)}'
+                    print(m_s)
+                    self.logger.info(m_s)
+                    
+            print(f'TOTAL TIME: {datetime.now() - total_time_start} seconds.')
+            self.logger.info(f'TOTAL TIME: {datetime.now() - total_time_start} seconds.')
+            self.logger.info("Work ended successfully.")
+        except Exception as e:
+            self.logger.exception(e)
+            print(e)
 
     def round(self, round):
         total_seconds = 0        
         for i in range(self.MODEL_COUNT):
-            seconds = self.models[i].learn(self.datasets[i][round])
+            seconds, target_history = self.models[i].learn(self.datasets[i][round])
+            target_metric = target_history.history[self.models[i].metrics[0]][-1]
             total_seconds += seconds
-        total_seconds += self.shadow_model.learn(self.shadow_dataset[round])
+            self.logger.info(f"Target model # {i+1} {self.models[i].metrics[0]}: {str(target_metric)}")
+        shadow_seconds, shadow_history = self.shadow_model.learn(self.shadow_dataset[round])
+        shadow_history = shadow_history.history[self.shadow_model.metrics[0]][-1]
+        total_seconds += shadow_seconds
+        self.logger.info(f"Shadow model {self.shadow_model.metrics[0]}: {str(shadow_history)}")
 
         self.target_model_states.append(self.models[self.target_model_num].extract_weights())
         self.shadow_model_states.append(self.shadow_model.extract_weights())
         
+        self._save_round_weights(round)
         return total_seconds
     
 

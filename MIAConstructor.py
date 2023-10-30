@@ -31,7 +31,7 @@ class MIAConstructor:
                     target_model_states.append(pickle.load(f))
             except FileNotFoundError:
                 print('file not found')
-                break
+                sys.exit(0)
         return target_model_states, shadow_model_states
 
     def create_mia_dataset(self):

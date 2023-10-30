@@ -461,14 +461,14 @@ class LocalModel:
                 self.spoofed_x = LocalModel.spoof_dataset(df_train.copy(), fraction=1.0, corr_limit=self.corr_limit, truth_limit=self.truth_limit)
                 self.spoofed_y = tf.one_hot(self.spoofed_x.pop('label'), 10)  
         else:
-            self.model.fit(data_x, data_y, 
+            history = self.model.fit(data_x, data_y, 
                             epochs=self.epochs, batch_size=self.batch_size, 
                             validation_split=self.validation_split)
 
         seconds = time.time() - start_time
         if self.debug:
             print(f'Learning was ended in {seconds} seconds.')
-        return seconds
+        return seconds, history
 
         
         if self.with_data_spoof:
