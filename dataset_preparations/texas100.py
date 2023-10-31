@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import pathlib
-
+# https://github.com/xehartnort/Purchase100-Texas100-datasets
 data = np.load('..\\original_datasets\\texas100.npz')
 features = data['features']
 labels = data['labels']
