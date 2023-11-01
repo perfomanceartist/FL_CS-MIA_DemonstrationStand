@@ -1,5 +1,5 @@
+# Класс MiaConstructor
 import time
-
 import numpy as np
 from LocalModel import LocalModel
 import yaml

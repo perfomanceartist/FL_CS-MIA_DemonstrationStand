@@ -1,3 +1,4 @@
+# Класс FL
 import time
 from LocalModel import LocalModel
 import yaml
