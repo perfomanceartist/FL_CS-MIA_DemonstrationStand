@@ -8,7 +8,7 @@ import pickle
 import os
 from pathlib import Path
 import sys
-
+from datetime import datetime
 
 
 class MIAConstructor:
@@ -36,7 +36,7 @@ class MIAConstructor:
 
     def create_mia_dataset(self):
         print(f'Start of creating MIA datasets...')
-        start_time = time.time()
+        start_time = datetime.now()
         target_model_states, shadow_model_states = self._read_model_states()
 
         shadow_train_df = pd.read_csv(f'sessions\\{self.session_name}\\datasets\\shadow.csv')
@@ -46,21 +46,23 @@ class MIAConstructor:
         
 
 
-        mia_train = self._get_mia_dataframe(shadow_model_states, shadow_train_df, test_df)
-        print(f'Creating MIA train dataset ended in {time.time() - start_time} seconds.')
-
-        mia_test = self._get_mia_dataframe(target_model_states, target_train_df, test_df)
-        print(f'Creating MIA test dataset ended in {time.time() - start_time} seconds.')
-
-        print('Saving MIA datasets to session folder...')
+        mia_train = self._get_mia_dataframe(shadow_model_states, shadow_train_df, test_df)        
         mia_train.to_csv(f'sessions\\{self.session_name}\\train_mia.csv', index=False)
+        print(f'Creating MIA train dataset ended in {datetime.now() - start_time}.')
+
+        start_time = datetime.now()
+        
+        mia_test = self._get_mia_dataframe(target_model_states, target_train_df, test_df)        
         mia_test.to_csv(f'sessions\\{self.session_name}\\test_mia.csv', index=False)
-
-        mia_train_diffs = self._get_diffs(mia_train)
-        mia_test_diffs = self._get_diffs(mia_test)
-
+        print(f'Creating MIA test dataset ended in {datetime.now() - start_time}.')
+        
+        print("Creating Diffs")
+        start_time = datetime.now()
+        mia_train_diffs = self._get_diffs(mia_train)        
         mia_train_diffs.to_csv(f'sessions\\{self.session_name}\\train_mia_diffs.csv', index=False)
+        mia_test_diffs = self._get_diffs(mia_test)        
         mia_test_diffs.to_csv(f'sessions\\{self.session_name}\\test_mia_diffs.csv', index=False)
+        print(f"Creating diffs ended in {datetime.now() - start_time}.")
 
     def _get_diffs(self, df):
         all_vals = []
@@ -94,21 +96,22 @@ class MIAConstructor:
         return res_df
         
 
-    def _get_mia_dataframe(self, model_states, presented_df, not_presented_df):
+    def _get_mia_dataframe(self, model_states, presented_df, not_presented_df, representation=True):
         test_model = LocalModel(presented_df, self.params)
         
-        # подготовка датасетов
-        conf_dataframe = presented_df.copy()
-        conf_dataframe  = conf_dataframe.drop(self.params["dataset"]["labels"], axis=1)        
+        # подготовка датасетов        
+        conf_dataframe  = presented_df.drop(self.params["dataset"]["labels"], axis=1) 
+        conf_test_dataframe  = not_presented_df.drop(self.params["dataset"]["labels"], axis=1)
 
-        conf_test_dataframe = not_presented_df.copy()
-        conf_test_dataframe  = conf_test_dataframe.drop(self.params["dataset"]["labels"], axis=1)
+        count_presented = conf_dataframe.shape[0]
+        count_not_presented = conf_test_dataframe.shape[0]
 
-        # сокращаем тестовый датасет до размера обучающего датасета
-        if conf_test_dataframe.shape[0]*2 > conf_dataframe.shape[0]:
-            conf_test_dataframe = conf_test_dataframe.iloc[:conf_dataframe.shape[0]]
-        elif conf_dataframe.shape[0]*2 > conf_test_dataframe.shape[0]:
-            conf_dataframe = conf_dataframe.iloc[:conf_test_dataframe.shape[0]]
+        if representation:
+            # сокращаем тестовый датасет до размера обучающего датасета
+            if count_not_presented > count_presented * 2:
+                conf_test_dataframe = conf_test_dataframe.sample(n=count_presented)
+            elif count_presented > count_not_presented*2:
+                conf_dataframe = conf_dataframe.sample(n=count_not_presented)
 
         count_presented = conf_dataframe.shape[0]
         count_not_presented = conf_test_dataframe.shape[0]
@@ -136,7 +139,7 @@ class MIAConstructor:
 
 
 if __name__ == "__main__":
-    session_name = "2023-10-28 22-16-36"
+    session_name = "Texas100 (2023-10-31 14-01-06)"
     miaconstructor = MIAConstructor(session_name)
     miaconstructor.create_mia_dataset()
     sys.exit(0)
