@@ -21,6 +21,10 @@ class MIAClassifier:
         self.y_label = params["y_label"]
         self.mode = params["mode"]
         self.target_metric = params["target_metric"]
+        try: self.rounds = params["rounds"]
+        except: self.rounds = None
+
+
         #self.methodList = ['LogisticRegression', 'DecisionTrees', 'MLP', 'SVC', 'NaiveBayes', 'KNN']
         Path("results").mkdir(parents=True, exist_ok=True) 
         logging.basicConfig(filename="attacker.log",
@@ -66,6 +70,11 @@ class MIAClassifier:
             attacker_eval_df = pd.read_csv('test_mia_diffs.csv')
             eval_labels = attacker_eval_df.pop(self.y_label)
 
+        if not self.rounds is None:
+            col_names = [str(round) for round in self.rounds]
+            attacker_df = attacker_df[col_names]
+            attacker_eval_df = attacker_eval_df[col_names]
+
         print(f'MODE: {self.mode}')
         infos = []
         for method in self.methodList:            
@@ -75,7 +84,7 @@ class MIAClassifier:
             elif method == 'DecisionTrees':
                 classifier =  DecisionTreeClassifier()
             elif method == 'MLP':
-                classifier = MLPClassifier(solver='lbfgs', alpha=1e-5,hidden_layer_sizes=(64, ))
+                classifier = MLPClassifier(solver='lbfgs', alpha=1e-5,hidden_layer_sizes=(64, ), n_iter_no_change=50)
             elif method == 'SVC':
                 classifier = SVC(kernel='poly', degree=4)  
             elif method == 'NaiveBayes':
