@@ -2,8 +2,10 @@ original_datasets/*
 prepared_datasets/*
 sessions/*
 MIA/results/*
+MIA/*.csv
 config.yaml
 MIA/config.yaml
 *.ipynb
 testing.py
 __pycache__
+*.log
