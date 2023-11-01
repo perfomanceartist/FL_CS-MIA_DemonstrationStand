@@ -53,25 +53,20 @@ class FL:
         print(self.shadow_model.model.summary())
     
     def parse_params(self, params:dict):
-        try:
-            self.MODEL_COUNT = params["global"]["model_count"]
-        except KeyError:
-            self.MODEL_COUNT = 5
-        try:
-            self.rounds = params["global"]["rounds"]
-        except KeyError:
-            self.rounds = 20
+        try: self.MODEL_COUNT = params["global"]["model_count"]
+        except KeyError: self.MODEL_COUNT = 5
         
-        try:
-            self.decription = params["global"]["description"]
-        except:
-            self.decription = "no description"
+        try: self.rounds = params["global"]["rounds"]
+        except KeyError: self.rounds = 20
         
-        try:
-            self.short_name = params["global"]["short_name"]
-        except:
-            self.short_name = "unnamed"
-
+        try: self.decription = params["global"]["description"]
+        except KeyError: self.decription = "no description"
+        
+        try:self.short_name = params["global"]["short_name"]
+        except KeyError: self.short_name = "unnamed"
+        
+        try: self.round_train_data_mode = params["global"]["round_train_data_mode"]
+        except KeyError: self.round_train_data_mode = "each_round_add_new"
 
     def _splitDataframe(df, parts):
         row_count = df.shape[0]
@@ -151,13 +146,33 @@ class FL:
             print(e)
 
     def round(self, round):
-        total_seconds = 0        
+        total_seconds = 0 
+        # обучение клиентов       
         for i in range(self.MODEL_COUNT):
-            seconds, target_history = self.models[i].learn(self.datasets[i][round])
+            # создание обучающей раундовой выборки
+            if self.round_train_data_mode == "each_round_add_new":
+                round_dataset = None
+                for j in range(round+1):
+                    if round_dataset is None: round_dataset = self.datasets[i][j].copy()
+                    else: round_dataset = pd.concat([round_dataset, self.datasets[i][j]], axis=0)
+            elif self.round_train_data_mode == "each_round_new":
+                round_dataset = self.datasets[i][round]     
+
+            seconds, target_history = self.models[i].learn(round_dataset)
             target_metric = target_history.history[self.models[i].metrics[0]][-1]
             total_seconds += seconds
             self.logger.info(f"Target model # {i+1} {self.models[i].metrics[0]}: {str(target_metric)}")
-        shadow_seconds, shadow_history = self.shadow_model.learn(self.shadow_dataset[round])
+
+        # создание обучающей раундовой выборки
+        if self.round_train_data_mode == "each_round_add_new":
+            round_dataset = None
+            for j in range(round+1):
+                if round_dataset is None: round_dataset = self.shadow_dataset[j].copy()
+                else: round_dataset = pd.concat([round_dataset, self.shadow_dataset[j]], axis=0)
+        elif self.round_train_data_mode == "each_round_new":
+            round_dataset = self.shadow_dataset[j]
+        # обучение теневой модели
+        shadow_seconds, shadow_history = self.shadow_model.learn(round_dataset)
         shadow_history = shadow_history.history[self.shadow_model.metrics[0]][-1]
         total_seconds += shadow_seconds
         self.logger.info(f"Shadow model {self.shadow_model.metrics[0]}: {str(shadow_history)}")
